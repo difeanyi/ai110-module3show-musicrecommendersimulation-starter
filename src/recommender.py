@@ -3,9 +3,9 @@ from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, asdict
 
 # Scoring weights from the Algorithm Recipe in README.md (max score 5.0)
-GENRE_POINTS = 2.0
+GENRE_POINTS = 1.0
 MOOD_POINTS = 1.0
-ENERGY_WEIGHT = 1.0
+ENERGY_WEIGHT = 2.0
 VALENCE_WEIGHT = 0.5
 ACOUSTIC_WEIGHT = 0.5
 
@@ -75,6 +75,20 @@ def load_songs(csv_path: str) -> List[Dict]:
             songs.append(row)
     return songs
 
+def _normalize_label(value) -> str:
+    """Lowercases and trims a genre/mood label so "Pop " matches "pop"."""
+    return str(value).strip().lower() if value is not None else ""
+
+def _clamp_unit(value: Optional[float]) -> Optional[float]:
+    """Keeps a numeric target inside 0.0-1.0 so closeness points never go negative."""
+    return None if value is None else max(0.0, min(1.0, float(value)))
+
+def _to_bool(value) -> Optional[bool]:
+    """Reads True/False from a real bool or a string like "false", since bool("False") is True."""
+    if value is None or isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("true", "yes", "1")
+
 def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     """
     Scores a single song against user preferences.
@@ -84,27 +98,27 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     reasons = []
 
     # Categories: fixed points for an exact match
-    if song["genre"] == user_prefs.get("favorite_genre"):
+    if _normalize_label(song["genre"]) == _normalize_label(user_prefs.get("favorite_genre")):
         score += GENRE_POINTS
         reasons.append(f"genre match: {song['genre']} (+{GENRE_POINTS:.1f})")
-    if song["mood"] == user_prefs.get("favorite_mood"):
+    if _normalize_label(song["mood"]) == _normalize_label(user_prefs.get("favorite_mood")):
         score += MOOD_POINTS
         reasons.append(f"mood match: {song['mood']} (+{MOOD_POINTS:.1f})")
 
     # Numbers: reward closeness to the target, not size
-    target_energy = user_prefs.get("target_energy")
+    target_energy = _clamp_unit(user_prefs.get("target_energy"))
     if target_energy is not None:
         points = ENERGY_WEIGHT * (1 - abs(song["energy"] - target_energy))
         score += points
         reasons.append(f"energy {song['energy']:.2f} vs target {target_energy:.2f} (+{points:.2f})")
 
-    target_valence = user_prefs.get("target_valence")
+    target_valence = _clamp_unit(user_prefs.get("target_valence"))
     if target_valence is not None:
         points = VALENCE_WEIGHT * (1 - abs(song["valence"] - target_valence))
         score += points
         reasons.append(f"valence {song['valence']:.2f} vs target {target_valence:.2f} (+{points:.2f})")
 
-    likes_acoustic = user_prefs.get("likes_acoustic")
+    likes_acoustic = _to_bool(user_prefs.get("likes_acoustic"))
     if likes_acoustic is not None:
         fit = song["acousticness"] if likes_acoustic else 1 - song["acousticness"]
         points = ACOUSTIC_WEIGHT * fit

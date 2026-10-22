@@ -24,6 +24,21 @@ MAX_SCORE = 5.0  # highest possible score from the Algorithm Recipe
 LINE_WIDTH = 60
 BAR_WIDTH = 20
 
+# Tricky profiles for checking that the scoring logic can't be fooled
+EDGE_CASE_PROFILES = {
+    "Capitalized labels": {"favorite_genre": "Pop", "favorite_mood": "Happy",
+                           "target_energy": 0.8, "target_valence": 0.8, "likes_acoustic": False},
+    "String boolean": {"favorite_genre": "pop", "favorite_mood": "happy",
+                       "target_energy": 0.8, "target_valence": 0.8, "likes_acoustic": "False"},
+    "Energy out of range": {"favorite_genre": "pop", "favorite_mood": "happy",
+                            "target_energy": 1.5, "target_valence": 0.8, "likes_acoustic": False},
+    "Missing keys": {"favorite_genre": "pop"},
+    "High-energy lofi fan": {"favorite_genre": "lofi", "favorite_mood": "chill",
+                             "target_energy": 0.95, "target_valence": 0.5, "likes_acoustic": False},
+    "Contradictory metal": {"favorite_genre": "metal", "favorite_mood": "peaceful",
+                            "target_energy": 0.1, "target_valence": 0.3, "likes_acoustic": True},
+}
+
 
 def main() -> None:
     songs = load_songs(str(SONGS_CSV))
@@ -41,15 +56,20 @@ def main() -> None:
     recommendations = recommend_songs(user_prefs, songs, k=5)
     print_recommendations(user_prefs, recommendations)
 
+    print("\n\nEDGE CASE PROFILES")
+    for name, profile in EDGE_CASE_PROFILES.items():
+        print_recommendations(profile, recommend_songs(profile, songs, k=5), title=name)
 
-def print_recommendations(user_prefs: dict, recommendations: list) -> None:
+
+def print_recommendations(user_prefs: dict, recommendations: list, title: str = "") -> None:
     """Prints each recommendation with its rank, score bar, and scoring reasons."""
+    energy = user_prefs.get("target_energy")
     print()
     print("=" * LINE_WIDTH)
-    print(f" Top {len(recommendations)} recommendations")
+    print(f" Top {len(recommendations)} recommendations" + (f": {title}" if title else ""))
     print(
-        f" Profile: {user_prefs['favorite_genre']} / {user_prefs['favorite_mood']}"
-        f" / energy {user_prefs['target_energy']:.2f}"
+        f" Profile: {user_prefs.get('favorite_genre', 'any')} / {user_prefs.get('favorite_mood', 'any')}"
+        f" / energy {f'{energy:.2f}' if energy is not None else 'any'}"
     )
     print("=" * LINE_WIDTH)
 
@@ -62,7 +82,7 @@ def print_recommendations(user_prefs: dict, recommendations: list) -> None:
         print(f"     {song['genre']} / {song['mood']}")
         print(f"     Score: {score:.2f} / {MAX_SCORE:.2f}  {bar}")
         print("     Why:")
-        for reason in explanation.split("; "):
+        for reason in explanation.split("; ") if explanation else ["no preferences matched"]:
             print(f"       • {reason}")
         print()
         print("-" * LINE_WIDTH)
