@@ -124,6 +124,75 @@ pip install -r requirements.txt
 python -m src.main
 ```
 
+4. *(Optional)* Pick a ranking mode, or compare all of them:
+
+```bash
+python -m src.main --mode genre-first     # balanced | genre-first | mood-first | energy-focused
+python -m src.main --compare              # default profile's top 5 under every mode
+```
+
+### Ranking modes
+
+Each mode is a `ScoringStrategy` in `src/recommender.py`: the same five rules with different weights. Every mode has a maximum score of 5.0, so scores can be compared across modes.
+
+| Mode | Genre | Mood | Energy | Valence | Acoustic | Best for |
+|---|---|---|---|---|---|---|
+| `balanced` (default) | 1.0 | 1.0 | 2.0× | 0.5× | 0.5× | Matching how a song *sounds*, with labels as bonuses |
+| `genre-first` | 3.0 | 1.0 | 0.5× | 0.25× | 0.25× | Listeners loyal to one genre |
+| `mood-first` | 0.5 | 3.0 | 1.0× | 0.25× | 0.25× | "Give me something happy", from any genre |
+| `energy-focused` | 0.5 | 0.5 | 3.5× | 0.25× | 0.25× | Workouts, studying, or anything where intensity matters most |
+
+Output of `python -m src.main --compare` (default pop/happy profile):
+
+```text
+Loaded songs: 18
+
+============================================================
+ Mode: balanced
+ Energy matters most, with equal bonuses for genre and mood
+============================================================
+ #1  4.85  Sunrise City           pop / happy
+ #2  3.74  Rooftop Lights         indie pop / happy
+ #3  3.70  Gym Hero               pop / intense
+ #4  2.81  Concrete Crown         hip-hop / confident
+ #5  2.69  Neon Pulse             edm / euphoric
+
+============================================================
+ Mode: genre-first
+ Stick to the favorite genre; everything else is a tiebreaker
+============================================================
+ #1  4.94  Sunrise City           pop / happy
+ #2  3.92  Gym Hero               pop / intense
+ #3  1.89  Rooftop Lights         indie pop / happy
+ #4  0.92  Neon Pulse             edm / euphoric
+ #5  0.91  Concrete Crown         hip-hop / confident
+
+============================================================
+ Mode: mood-first
+ Match the mood, even if the genre is different
+============================================================
+ #1  4.93  Sunrise City           pop / happy
+ #2  4.37  Rooftop Lights         indie pop / happy
+ #3  1.85  Gym Hero               pop / intense
+ #4  1.41  Concrete Crown         hip-hop / confident
+ #5  1.34  Neon Pulse             edm / euphoric
+
+============================================================
+ Mode: energy-focused
+ Match the intensity level; labels barely matter
+============================================================
+ #1  4.88  Sunrise City           pop / happy
+ #2  4.27  Rooftop Lights         indie pop / happy
+ #3  4.03  Gym Hero               pop / intense
+ #4  3.85  Concrete Crown         hip-hop / confident
+ #5  3.69  Night Drive Loop       synthwave / moody
+```
+
+What the modes change:
+- **`genre-first`** pushes *Gym Hero* (pop, but intense) back to #2 and drops *Rooftop Lights* (happy, but indie pop) to #3. The gap is large: 3.92 vs 1.89.
+- **`mood-first`** does the opposite: *Rooftop Lights* is a strong #2 (4.37) and *Gym Hero* falls to 1.85.
+- **`energy-focused`** keeps the scores close together (3.69–4.88), and *Night Drive Loop* (synthwave, moody, energy 0.75) enters the top 5 purely on intensity.
+
 ### Running Tests
 
 Run the starter tests with:
@@ -143,6 +212,7 @@ Output of `python -m src.main` using the default taste profile in `src/main.py` 
 ```text
 Loading songs from data/songs.csv...
 Loaded songs: 18
+Mode: balanced (Energy matters most, with equal bonuses for genre and mood)
 
 ============================================================
  Top 5 recommendations

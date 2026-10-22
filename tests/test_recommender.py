@@ -59,3 +59,24 @@ def test_explain_recommendation_returns_non_empty_string():
     explanation = rec.explain_recommendation(user, song)
     assert isinstance(explanation, str)
     assert explanation.strip() != ""
+
+
+def test_strategies_change_the_ranking():
+    from src.recommender import GENRE_FIRST, MOOD_FIRST
+
+    songs = [
+        Song(id=1, title="Pop But Intense", artist="A", genre="pop", mood="intense",
+             energy=0.8, tempo_bpm=120, valence=0.8, danceability=0.8, acousticness=0.2),
+        Song(id=2, title="Happy Not Pop", artist="B", genre="indie", mood="happy",
+             energy=0.8, tempo_bpm=120, valence=0.8, danceability=0.8, acousticness=0.2),
+    ]
+    user = UserProfile(favorite_genre="pop", favorite_mood="happy", target_energy=0.8, likes_acoustic=False)
+
+    assert Recommender(songs, GENRE_FIRST).recommend(user, k=1)[0].title == "Pop But Intense"
+    assert Recommender(songs, MOOD_FIRST).recommend(user, k=1)[0].title == "Happy Not Pop"
+
+
+def test_every_strategy_has_same_max_score():
+    from src.recommender import STRATEGIES
+
+    assert {round(s.max_score, 6) for s in STRATEGIES.values()} == {5.0}
